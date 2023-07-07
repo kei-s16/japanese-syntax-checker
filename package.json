@@ -1,0 +1,10 @@
+{
+  "name": "japanese-syntax-checker",
+  "version": "1.0.0",
+  "description": "[textlint](https://textlint.github.io/)を用いてpostされた日本語の構文チェックを行い、その結果を返します。",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "textlint": "^13.3.3"
+  }
+}
