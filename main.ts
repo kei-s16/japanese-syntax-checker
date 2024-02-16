@@ -1,38 +1,31 @@
-import { Application, Router } from "https://deno.land/x/oak@v12.5.0/mod.ts";
-import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
-import { z } from "https://deno.land/x/zod@v3.21.4/mod.ts";
-import { lintText } from "./textlint/checkSyntax.ts";
+import { Hono, validator } from 'hono';
+import { z } from "zod";
+import { lintText } from "./textlint.ts";
 
-const router = new Router();
-router
-  .post("/", async (context) => {
-    const body = context.request.body();
-    if (body.type !== "json") {
-      context.response.status = 400;
-      context.response.body = { msg: "Invalid body type" };
-      return;
+const app = new Hono()
+
+const schema = z.object({
+    text: z.string(),
+});
+
+app.post('/api',
+  validator('json', (value, c) => {
+    console.log(value);
+    const parsed = schema.safeParse(value);
+    if (!parsed.success) {
+      return c.json({
+        msg: "Invalid body"
+      }, 400);
     }
 
-    const parsedBody = (z.object({
-      text: z.string(),
-    })).safeParse(await body.value);
+    return parsed.data;
+  }),
+  async (c) => {
+  const result = await lintText(c.req.valid('json').text);
+  return c.json({
+    text: c.req.valid('json').text,
+    msgs: result.messages,
+  }, 200);
+})
 
-    if (!parsedBody.success) {
-      context.response.status = 400;
-      context.response.body = { msg: "Invalid body" };
-      return;
-    }
-
-    const resultMessage = (await lintText(parsedBody.data.text)).messages;
-    context.response.body = {
-      ...parsedBody.data,
-      messages: resultMessage,
-    };
-  });
-
-const app = new Application();
-app.use(oakCors()); // Enable CORS for All Routes
-app.use(router.routes());
-app.use(router.allowedMethods());
-
-await app.listen({ port: 8000 });
+Deno.serve(app.fetch)
